@@ -21,7 +21,7 @@ from . import events
 _internals = [Locust, HttpLocust]
 version = locust.__version__
 
-def parse_options():
+def parse_options(command_line_arguments = None):
     """
     Handle command-line options with optparse.OptionParser.
 
@@ -248,7 +248,10 @@ def parse_options():
 
     # Finalize
     # Return three-tuple of parser + the output from parse_args (opt obj, args)
-    opts, args = parser.parse_args()
+    if command_line_arguments:
+        opts, args = parser.parse_args(command_line_arguments)
+    else:
+        opts, args = parser.parse_args()
     return parser, opts, args
 
 
@@ -348,8 +351,8 @@ def load_locustfile(path):
     locusts = dict(filter(is_locust, vars(imported).items()))
     return imported.__doc__, locusts
 
-def main():
-    parser, options, arguments = parse_options()
+def main(command_line_arguments = None):
+    parser, options, arguments = parse_options(command_line_arguments)
 
     # setup logging
     setup_logging(options.loglevel, options.logfile)
