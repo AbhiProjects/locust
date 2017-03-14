@@ -532,13 +532,13 @@ def print_error_report():
 def store_stats(csvWriter,stats):
     percentile_stats = []
     csvWriter.writerow(['Stat Report'])
-    csvWriter.writerow(['Request Type','Name', '#Requests', '#Fails', 'Avg', 'Min', 'Max', 'Median', 'Request/s'])
+    csvWriter.writerow(['Request Type','Name', '#Pass', '#Fails', 'Median', 'Avg', 'Min', 'Max', 'Request/s'])
     for key in sorted(six.iterkeys(stats)):
         r = stats[key]
         try:
             csvWriter.writerow([r.method,r.name,r.num_requests,r.num_failures,
-                                r.avg_response_time,r.min_response_time,r.max_response_time,
-                                r.median_response_time,r.current_rps])
+                                r.median_response_time,r.avg_response_time,
+                                r.min_response_time,r.max_response_time,r.current_rps])
             if r.response_times:
                 percentile_stats.append([r.method,r.name,r.num_requests] + r.csvstats_percentile())
         except Exception as e:
@@ -549,8 +549,8 @@ def store_stats(csvWriter,stats):
 def store_percentile(csvWriter,percentile_stats):
     if not percentile_stats:
         return
-    csvWriter.writerow(['Percentile Report'])
-    csvWriter.writerow(['Request Type','Name', '#Requests', '50%', '66%', '75%', '80%', '90%', '95%', '98%', '99%', '100%'])
+    csvWriter.writerow(['Pass Percentile Report'])
+    csvWriter.writerow(['Request Type','Name', '#Request', '50%', '66%', '75%', '80%', '90%', '95%', '98%', '99%', '100%'])
     for single_percentile_request_data in percentile_stats:
         csvWriter.writerow(single_percentile_request_data)
 
