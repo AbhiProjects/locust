@@ -1,6 +1,7 @@
 import time
 import gevent
 import hashlib
+import csv
 import six
 from six.moves import xrange
 
@@ -356,6 +357,22 @@ class StatsEntry(object):
             self.get_response_time_percentile(0.99),
             self.max_response_time
         )
+        
+    def csvstats_percentile(self):
+        if not self.num_requests:
+            raise ValueError("Can't calculate percentile on url with no successful requests")
+        stat_percentile = [
+                            self.get_response_time_percentile(0.5),
+                            self.get_response_time_percentile(0.66),
+                            self.get_response_time_percentile(0.75),
+                            self.get_response_time_percentile(0.80),
+                            self.get_response_time_percentile(0.90),
+                            self.get_response_time_percentile(0.95),
+                            self.get_response_time_percentile(0.98),
+                            self.get_response_time_percentile(0.99),
+                            self.max_response_time
+                          ]
+        return stat_percentile
 
 class StatsError(object):
     def __init__(self, method, name, error, occurences=0):
@@ -512,6 +529,51 @@ def print_error_report():
     console_logger.info("-" * (80 + STATS_NAME_WIDTH))
     console_logger.info("")
 
+def store_stats(csvWriter,stats):
+    percentile_stats = []
+    csvWriter.writerow(['Stat Report'])
+    csvWriter.writerow(['Request Type','Name', '#Requests', '#Fails', 'Avg', 'Min', 'Max', 'Median', 'Request/s'])
+    for key in sorted(six.iterkeys(stats)):
+        r = stats[key]
+        try:
+            csvWriter.writerow([r.method,r.name,r.num_requests,r.num_failures,
+                                r.avg_response_time,r.min_response_time,r.max_response_time,
+                                r.median_response_time,r.current_rps])
+            if r.response_times:
+                percentile_stats.append([r.method,r.name,r.num_requests] + r.csvstats_percentile())
+        except Exception as e:
+            console_logger.error('Exception In Wrting Store Stats CSV File',exc_info=True)
+    else:
+        return percentile_stats
+
+def store_percentile(csvWriter,percentile_stats):
+    if not percentile_stats:
+        return
+    csvWriter.writerow(['Percentile Report'])
+    csvWriter.writerow(['Request Type','Name', '#Requests', '50%', '66%', '75%', '80%', '90%', '95%', '98%', '99%', '100%'])
+    for single_percentile_request_data in percentile_stats:
+        csvWriter.writerow(single_percentile_request_data)
+
+def store_error(csvWriter):
+    if not len(global_stats.errors):
+        return
+    csvWriter.writerow(['Error Report'])
+    csvWriter.writerow(['Ocuurances','Error'])
+    for error in six.itervalues(global_stats.errors):
+        csvWriter.writerow([error.occurences, error.to_name()])
+
+def store_all_stats(filename,stats):
+    try:
+        csv_file = open(filename,'wb')
+        csvWriter = csv.writer(csv_file)
+        percentile_stats = store_stats(csvWriter,stats)
+        store_percentile(csvWriter,percentile_stats)
+        store_error(csvWriter)
+    except Exception as e:
+        console_logger.error('Exception In Wrting Stats CSV File',exc_info=True)
+    else:
+        csv_file.close()
+    
 def stats_printer():
     from .runners import locust_runner
     while True:

@@ -12,7 +12,7 @@ from optparse import OptionParser
 
 from . import web
 from .log import setup_logging, console_logger
-from .stats import stats_printer, print_percentile_stats, print_error_report, print_stats
+from .stats import stats_printer, print_percentile_stats, print_error_report, print_stats, store_all_stats
 from .inspectlocust import print_task_ratio, get_task_ratio_dict
 from .core import Locust, HttpLocust
 from .runners import MasterLocustRunner, SlaveLocustRunner, LocalLocustRunner
@@ -161,7 +161,7 @@ def parse_options():
         type='str',
         dest='loglevel',
         default='INFO',
-        help="Choose between DEBUG/INFO/WARNING/ERROR/CRITICAL. Default is INFO.",
+        help="Choose between DEBUG/INFO/WARNING/ERROR/CRITICAL. Default is INFO."
     )
     
     # log file
@@ -171,7 +171,7 @@ def parse_options():
         type='str',
         dest='logfile',
         default=None,
-        help="Path to log file. If not set, log will go to stdout/stderr",
+        help="Path to log file. If not set, log will go to stdout/stderr"
     )
     
     # if we should print stats in the console
@@ -192,12 +192,22 @@ def parse_options():
        help='Only print the summary stats'
     )
 
+    # store stats in a csv file
+    parser.add_option(
+        '--store-stats',
+        action='store',
+        type='str',
+        dest='csvfile',
+        default='',
+        help="Path to CSV file. If not set, No CSV will be created. Only used together with --no-web"
+    )
+
     parser.add_option(
         '--no-reset-stats',
         action='store_true',
         dest='no_reset_stats',
         default=False,
-        help="Do not reset statistics once hatching has been completed",
+        help="Do not reset statistics once hatching has been completed"
     )
     
     # List locust commands found in loaded locust files/source files
@@ -405,6 +415,11 @@ def main():
     if options.master and options.no_web:
         logger.error("Locust can not run distributed with the web interface disabled (do not use --no-web and --master together)")
         sys.exit(0)
+        
+    # if --store-stats is set, make sure --no-web is also set
+    if options.csvfile and not options.no_web:
+        logger.error("Locust can not store csv file in the web interface mode. (set --store-stats and --no-web together)")
+        sys.exit(0)
 
     if not options.no_web and not options.slave:
         # spawn web greenlet
@@ -438,10 +453,14 @@ def main():
         logger.info("Shutting down (exit code %s), bye." % code)
 
         events.quitting.fire()
-        print_stats(runners.locust_runner.request_stats)
-        print_percentile_stats(runners.locust_runner.request_stats)
-
-        print_error_report()
+        
+        if not options.csvfile
+            print_stats(runners.locust_runner.request_stats)
+            print_percentile_stats(runners.locust_runner.request_stats)
+            print_error_report()
+        else:
+            store_all_stats(options.csvfile,runners.locust_runner.request_stats)
+            
         sys.exit(code)
     
     # install SIGTERM handler
