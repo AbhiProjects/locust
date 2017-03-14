@@ -454,7 +454,7 @@ def main():
 
         events.quitting.fire()
         
-        if not options.csvfile
+        if not options.csvfile:
             print_stats(runners.locust_runner.request_stats)
             print_percentile_stats(runners.locust_runner.request_stats)
             print_error_report()
